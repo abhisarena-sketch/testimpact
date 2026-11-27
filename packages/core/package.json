@@ -1,0 +1,23 @@
+{
+  "name": "@testimpact/core",
+  "version": "0.1.0",
+  "description": "TestImpact analysis engine: change detection, orchestration and impact calculation.",
+  "license": "MIT",
+  "author": "Workfonic Labs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "repository": { "type": "git", "url": "git+https://github.com/abhisarena-sketch/testimpact.git", "directory": "packages/core" },
+  "keywords": ["testing", "test-impact", "test-selection", "static-analysis", "typescript"],
+  "sideEffects": false,
+  "dependencies": { "@testimpact/dependency-analyzer": "0.1.0", "@testimpact/framework-adapters": "0.1.0", "@testimpact/test-discovery": "0.1.0", "picomatch": "^4.0.3", "zod": "^4.1.0" }
+}
