@@ -13,7 +13,8 @@
     "packages/dependency-analyzer",
     "packages/test-discovery",
     "packages/core",
-    "packages/cli"
+    "packages/cli",
+    "apps/playground"
   ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
