@@ -35,7 +35,8 @@
     "typescript"
   ],
   "dependencies": {
-    "@testimpact/core": "0.1.0"
+    "@testimpact/core": "0.1.0",
+    "@testimpact/framework-adapters": "0.1.0"
   },
   "bin": {
     "testimpact": "./dist/bin.js"
