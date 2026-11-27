@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import picomatch from 'picomatch';
 import { asRecord, asStringArray, isRegExpValue, isUnknown, readStaticConfigObject, type StaticValue } from './static-config.js';
 
 export type FrameworkName = 'vitest' | 'jest' | 'node';
@@ -138,30 +139,13 @@ export const vitestAdapter: FrameworkAdapter = {
     const result: FrameworkConfig = { framework: 'vitest', aliases: {}, setupFiles: [], warnings: [] };
     const file = findConfigFile(ctx, this.configFileNames);
     if (!file) return result;
-    const text = readText(ctx, file);
-    if (text === undefined) return result;
     result.configFile = file;
-    const { value } = readStaticConfigObject(path.join(ctx.root, file), text);
-    if (!value) {
-      result.warnings.push(`${file}: configuration object could not be read statically; Vitest defaults are used.`);
-      return result;
-    }
-    const test = asRecord(value.test);
-    const include = asStringArray(test?.include);
-    if (include) result.include = { globs: include.map(stripDot), regexes: [] };
-    else if (test?.include !== undefined) result.warnings.push(`${file}: test.include is not a static list; Vitest defaults are used.`);
-    const exclude = asStringArray(test?.exclude);
-    if (exclude) result.exclude = { globs: exclude.map(stripDot), regexes: [] };
-    for (const key of ['setupFiles', 'globalSetup'] as const) {
-      const files = asStringArray(test?.[key]);
-      if (files) result.setupFiles.push(...files.map((f) => relFromRoot(ctx, f)));
-      else if (test?.[key] !== undefined) result.warnings.push(`${file}: test.${key} is not static.`);
-    }
-    if (test?.projects !== undefined || test?.workspace !== undefined) {
-      result.warnings.push(`${file}: Vitest projects/workspaces are not analysed individually; root-level patterns are used.`);
-    }
-    const alias = asRecord(value.resolve)?.alias;
-    collectViteAliases(ctx, alias, result, file);
+    const includes: string[] = [];
+    const excludes: string[] = [];
+    const ok = readVitestConfigFile(ctx, file, result, includes, excludes, 0);
+    if (!ok) return result;
+    if (includes.length > 0) result.include = { globs: [...new Set(includes)], regexes: [] };
+    if (excludes.length > 0) result.exclude = { globs: [...new Set(excludes)], regexes: [] };
     return result;
   },
   sniff(source) {
@@ -174,6 +158,118 @@ export const vitestAdapter: FrameworkAdapter = {
 
 function stripDot(p: string): string {
   return p.replace(/^\.\//, '');
+}
+
+function joinGlob(dir: string, glob: string): string {
+  const g = stripDot(glob);
+  if (!dir || dir === '.') return g;
+  return `${dir.replace(/\/+$/, '')}/${g}`;
+}
+
+const VITEST_CONFIG_NAMES = [...JS_CONFIG_EXT.map((e) => `vitest.config.${e}`), ...JS_CONFIG_EXT.map((e) => `vite.config.${e}`)];
+
+/**
+ * Read a Vitest config file statically, including inline and file-based `test.projects`
+ * (and the legacy `workspace`). Include/exclude globs are rewritten relative to the project root.
+ */
+function readVitestConfigFile(ctx: ProjectContext, file: string, result: FrameworkConfig, includes: string[], excludes: string[], depth: number): boolean {
+  const text = readText(ctx, file);
+  if (text === undefined) return false;
+  const { value } = readStaticConfigObject(path.join(ctx.root, file), text);
+  if (!value) {
+    result.warnings.push(`${file}: configuration object could not be read statically; Vitest defaults are used.`);
+    return false;
+  }
+  const dir = path.posix.dirname(file);
+  applyVitestTest(ctx, asRecord(value.test), dir === '.' ? '' : dir, file, result, includes, excludes, depth);
+  collectViteAliases(ctx, asRecord(value.resolve)?.alias, result, file);
+  return true;
+}
+
+function applyVitestTest(
+  ctx: ProjectContext,
+  test: Record<string, StaticValue> | undefined,
+  dir: string,
+  file: string,
+  result: FrameworkConfig,
+  includes: string[],
+  excludes: string[],
+  depth: number,
+): void {
+  if (!test) return;
+  const base = typeof test.dir === 'string' ? path.posix.join(dir || '.', stripDot(test.dir)) : typeof test.root === 'string' ? path.posix.join(dir || '.', stripDot(test.root)) : dir;
+  const baseDir = base === '.' ? '' : base;
+  const include = asStringArray(test.include);
+  if (include) includes.push(...include.map((g) => joinGlob(baseDir, g)));
+  else if (test.include !== undefined) result.warnings.push(`${file}: test.include is not a static list; Vitest defaults are used.`);
+  const exclude = asStringArray(test.exclude);
+  if (exclude) excludes.push(...exclude.map((g) => (g.startsWith('**') ? g : joinGlob(baseDir, g))));
+  for (const key of ['setupFiles', 'globalSetup'] as const) {
+    const files = asStringArray(test[key]);
+    if (files) result.setupFiles.push(...files.map((f) => relFromRoot(ctx, path.isAbsolute(f) ? f : path.join(ctx.root, dir, f))));
+    else if (test[key] !== undefined) result.warnings.push(`${file}: test.${key} is not static.`);
+  }
+  const projects = test.projects ?? test.workspace;
+  if (projects === undefined) return;
+  if (!Array.isArray(projects) || depth > 3) {
+    result.warnings.push(`${file}: Vitest projects could not be read statically; root-level patterns are used.`);
+    return;
+  }
+  for (const entry of projects) {
+    const rec = asRecord(entry);
+    if (rec) {
+      // Inline project: { test: { include, dir, ... } } or { extends: true, test: {...} }
+      const inner = asRecord(rec.test);
+      const before = includes.length;
+      applyVitestTest(ctx, inner, dir, file, result, includes, excludes, depth + 1);
+      if (includes.length === before && inner?.include === undefined) {
+        includes.push(...vitestAdapter.defaultTestPatterns.map((g) => joinGlob(baseDir, g)));
+      }
+      continue;
+    }
+    if (typeof entry !== 'string') {
+      result.warnings.push(`${file}: a Vitest project entry could not be read statically.`);
+      continue;
+    }
+    for (const projectPath of expandProjectEntry(ctx, dir, entry)) {
+      const configFile = /\.(m|c)?[jt]s$/.test(projectPath) ? projectPath : VITEST_CONFIG_NAMES.map((n) => `${projectPath}/${n}`).find((c) => fs.existsSync(path.join(ctx.root, c)));
+      if (configFile && fs.existsSync(path.join(ctx.root, configFile))) {
+        const nestedIncludes: string[] = [];
+        if (readVitestConfigFile(ctx, configFile, result, nestedIncludes, excludes, depth + 1) && nestedIncludes.length > 0) includes.push(...nestedIncludes);
+        else includes.push(...vitestAdapter.defaultTestPatterns.map((g) => joinGlob(path.posix.dirname(configFile), g)));
+      } else if (fs.existsSync(path.join(ctx.root, projectPath))) {
+        includes.push(...vitestAdapter.defaultTestPatterns.map((g) => joinGlob(projectPath, g)));
+      }
+    }
+  }
+}
+
+/** Expand a project entry such as `packages/*` or `./apps/web` into root-relative paths (directories or config files). */
+function expandProjectEntry(ctx: ProjectContext, dir: string, entry: string): string[] {
+  const rel = path.posix.normalize(path.posix.join(dir || '.', stripDot(entry)));
+  if (!/[*?[{]/.test(rel)) return [rel.replace(/\/+$/, '')];
+  const segments = rel.split('/');
+  const firstGlob = segments.findIndex((seg) => /[*?[{]/.test(seg));
+  const prefix = segments.slice(0, firstGlob).join('/');
+  const matcher = picomatch(rel.replace(/\/+$/, ''));
+  const out: string[] = [];
+  const walk = (current: string, level: number) => {
+    if (level > 3) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(path.join(ctx.root, current), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const child = current ? `${current}/${e.name}` : e.name;
+      if (matcher(child)) out.push(child);
+      if (e.isDirectory()) walk(child, level + 1);
+    }
+  };
+  walk(prefix, 0);
+  return out.sort();
 }
 
 function collectViteAliases(ctx: ProjectContext, alias: StaticValue | undefined, result: FrameworkConfig, file: string): void {

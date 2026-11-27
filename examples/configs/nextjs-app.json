@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/abhisarena-sketch/testimpact/main/docs/testimpact.schema.json",
+  "exclude": ["node_modules", ".next", "out", "public", "coverage"],
+  "testFramework": "auto",
+  "globalFiles": ["package.json", "package-lock.json", "tsconfig.json", "next.config.*", "vitest.config.*", "jest.config.*", "middleware.ts"],
+  "overrides": [{ "files": ["e2e/**"], "testFramework": "node" }]
+}

@@ -268,3 +268,22 @@ describe('impact analysis: Jest and Node.js test runner projects', () => {
     expect(report.runCommands[0]?.commandLine).toBe('node --test test/stats.test.mjs');
   });
 });
+
+describe('safety', () => {
+  it('never writes the cache outside the project root', async () => {
+    const dir = gitFixture('node-app');
+    const outside = path.join(path.dirname(dir), `outside-${path.basename(dir)}`);
+    const { parseConfig } = await import('@testimpact/core');
+    const report = await analyze({ root: dir, source: { kind: 'uncommitted' }, config: parseConfig({ cache: { directory: outside } }) });
+    expect(report.warnings.join()).toMatch(/outside the project root; caching is disabled/);
+    expect(fs.existsSync(outside)).toBe(false);
+  });
+
+  it('does not modify project files', async () => {
+    const dir = gitFixture('web-app');
+    editLine(dir, 'src/auth/login.ts', 'export function logout(): void {}', 'export function logout(): void { return; }');
+    await analyze({ root: dir, source: { kind: 'uncommitted' } });
+    // Only the change made by the test is visible to Git; the cache directory ignores itself.
+    expect(git(dir, 'status', '--porcelain').trim()).toBe('M src/auth/login.ts');
+  });
+});

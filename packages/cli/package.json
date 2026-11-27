@@ -15,7 +15,9 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.map",
     "README.md",
     "LICENSE"
   ],
@@ -40,5 +42,12 @@
   },
   "bin": {
     "testimpact": "./dist/bin.js"
+  },
+  "homepage": "https://github.com/abhisarena-sketch/testimpact#readme",
+  "bugs": {
+    "url": "https://github.com/abhisarena-sketch/testimpact/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

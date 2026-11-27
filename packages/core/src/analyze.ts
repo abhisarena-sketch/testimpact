@@ -137,8 +137,13 @@ export async function analyze(options: AnalyzeOptions): Promise<ImpactReport> {
     dynamicImports: config.analysis.dynamicImports,
     mockReferences: config.analysis.mockReferences,
   };
-  const useCache = options.cache ?? config.cache.enabled;
   const cacheDir = path.resolve(root, config.cache.directory);
+  let useCache = options.cache ?? config.cache.enabled;
+  if (useCache && relativeToRoot(root, cacheDir) === undefined) {
+    // Never write outside the project being analysed.
+    warnings.push(`Cache directory ${config.cache.directory} is outside the project root; caching is disabled.`);
+    useCache = false;
+  }
   const cache = useCache ? new DiskParseCache(cacheDir, DiskParseCache.optionsKey(parseOptions)) : undefined;
   if (cache) await cache.load();
   const built = await buildDependencyGraph({

@@ -18,13 +18,16 @@
   ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
-    "build:playground": "npm run build --workspace apps/playground",
-    "typecheck": "tsc -b tsconfig.build.json --noEmit false && tsc -p tsconfig.test.json --noEmit",
+    "build:playground": "npm run build --workspace @testimpact/playground",
+    "typecheck": "tsc -b tsconfig.build.json && tsc -p tsconfig.test.json && npm run typecheck --workspace @testimpact/playground",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "node scripts/bench.mjs",
-    "clean": "rm -rf packages/*/dist packages/*/tsconfig.tsbuildinfo .testimpact"
+    "playground": "npm run build && npm run dev --workspace @testimpact/playground",
+    "bench": "npm run build && node scripts/bench.mjs",
+    "schema": "npm run build && node scripts/generate-schema.mjs",
+    "pack:check": "npm run build && npm pack --dry-run --workspace @testimpact/framework-adapters --workspace @testimpact/dependency-analyzer --workspace @testimpact/test-discovery --workspace @testimpact/core --workspace testimpact",
+    "clean": "rm -rf packages/*/dist apps/playground/.next .testimpact"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -34,5 +37,9 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.74.0",
     "vitest": "^4.1.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisarena-sketch/testimpact.git"
   }
 }

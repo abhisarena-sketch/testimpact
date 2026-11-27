@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/abhisarena-sketch/testimpact/main/docs/testimpact.schema.json",
+  "testFramework": "jest",
+  "testPatterns": ["**/__tests__/**/*.js", "test/**/*.spec.js"],
+  "aliases": { "^@app/(.*)$": "<rootDir>/lib/$1" },
+  "mappings": [
+    { "source": "lib/reports/**", "tests": "test/e2e/reports.spec.js", "reason": "End-to-end report tests drive the CLI without importing lib/reports" }
+  ],
+  "analysis": { "maxDepth": 6 }
+}

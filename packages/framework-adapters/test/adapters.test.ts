@@ -72,6 +72,18 @@ describe('static configuration reading', () => {
     expect(config.warnings.join('\n')).toMatch(/could not be read statically/);
   });
 
+  it('reads Vitest projects (inline and per-package configs)', () => {
+    const ctx = temp({
+      'vitest.config.ts': `export default defineConfig({ test: { projects: ['packages/*', { test: { name: 'unit', dir: 'tools', include: ['**/check.ts'] } }] } });`,
+      'packages/a/vitest.config.ts': `export default defineConfig({ test: { include: ['src/**/test.ts'], setupFiles: ['./setup.ts'] } });`,
+      'packages/a/src/x/test.ts': '',
+      'packages/b/package.json': '{}',
+    });
+    const config = vitestAdapter.readConfig(ctx);
+    expect(config.include?.globs).toEqual(['packages/a/src/**/test.ts', 'packages/b/**/*.{test,spec}.?(c|m)[jt]s?(x)', 'tools/**/check.ts']);
+    expect(config.setupFiles).toEqual(['packages/a/setup.ts']);
+  });
+
   it('reports configs that cannot be read statically', () => {
     const ctx = temp({ 'vitest.config.ts': 'export default await loadConfigFromSomewhere();' });
     const config = vitestAdapter.readConfig(ctx);
