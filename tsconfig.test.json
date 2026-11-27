@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "paths": {
+      "@testimpact/core": ["./packages/core/src/index.ts"],
+      "@testimpact/dependency-analyzer": ["./packages/dependency-analyzer/src/index.ts"],
+      "@testimpact/test-discovery": ["./packages/test-discovery/src/index.ts"],
+      "@testimpact/framework-adapters": ["./packages/framework-adapters/src/index.ts"],
+      "testimpact": ["./packages/cli/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/test/**/*.ts", "tests/**/*.ts", "vitest.config.ts", "scripts/*.d.mts"],
+  "exclude": ["tests/fixtures/**"]
+}

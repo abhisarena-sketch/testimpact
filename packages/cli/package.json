@@ -1,0 +1,53 @@
+{
+  "name": "testimpact",
+  "version": "0.1.0",
+  "description": "TestImpact CLI. Change code. Know what to test.",
+  "license": "MIT",
+  "author": "Workfonic Labs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisarena-sketch/testimpact.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "testing",
+    "test-impact",
+    "test-selection",
+    "static-analysis",
+    "typescript"
+  ],
+  "dependencies": {
+    "@testimpact/core": "0.1.0",
+    "@testimpact/framework-adapters": "0.1.0"
+  },
+  "bin": {
+    "testimpact": "./dist/bin.js"
+  },
+  "homepage": "https://github.com/abhisarena-sketch/testimpact#readme",
+  "bugs": {
+    "url": "https://github.com/abhisarena-sketch/testimpact/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

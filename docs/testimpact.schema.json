@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "include": {
+      "default": [
+        "**/*"
+      ],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "exclude": {
+      "default": [
+        "node_modules",
+        ".git",
+        ".next",
+        "dist",
+        "build",
+        "coverage",
+        "out",
+        ".turbo",
+        ".testimpact"
+      ],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "testFramework": {
+      "default": "auto",
+      "type": "string",
+      "enum": [
+        "auto",
+        "vitest",
+        "jest",
+        "node"
+      ]
+    },
+    "testPatterns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "analysis": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "imports": {
+          "default": true,
+          "type": "boolean"
+        },
+        "exports": {
+          "default": true,
+          "type": "boolean"
+        },
+        "dynamicImports": {
+          "default": true,
+          "type": "boolean"
+        },
+        "pathAliases": {
+          "default": true,
+          "type": "boolean"
+        },
+        "testDiscovery": {
+          "default": true,
+          "type": "boolean"
+        },
+        "symbolLevel": {
+          "default": true,
+          "type": "boolean"
+        },
+        "namingConventions": {
+          "default": true,
+          "type": "boolean"
+        },
+        "mockReferences": {
+          "default": true,
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "confidenceThreshold": {
+      "default": "medium",
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
+          "tests": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "source",
+          "tests"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "alwaysRun": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "globalFiles": {
+      "default": [
+        "package.json",
+        "package-lock.json",
+        "npm-shrinkwrap.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "bun.lockb",
+        "tsconfig.json",
+        "tsconfig.*.json",
+        "jsconfig.json",
+        "vitest.config.*",
+        "vitest.workspace.*",
+        "vite.config.*",
+        "jest.config.*",
+        "babel.config.*",
+        ".babelrc",
+        "testimpact.config.json",
+        ".testimpactrc.json",
+        ".testimpactrc"
+      ],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "aliases": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "tsconfig": {
+      "type": "string",
+      "minLength": 1
+    },
+    "overrides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
+          "testFramework": {
+            "type": "string",
+            "enum": [
+              "vitest",
+              "jest",
+              "node"
+            ]
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "cache": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "directory": {
+          "default": ".testimpact/cache",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "concurrency": {
+      "default": 32,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 256
+    },
+    "useGitignore": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://raw.githubusercontent.com/abhisarena-sketch/testimpact/main/docs/testimpact.schema.json",
+  "title": "TestImpact configuration"
+}

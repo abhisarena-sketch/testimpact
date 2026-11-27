@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/abhisarena-sketch/testimpact/main/docs/testimpact.schema.json",
+  "include": ["packages/*/src/**/*", "apps/*/src/**/*"],
+  "testFramework": "vitest",
+  "confidenceThreshold": "medium",
+  "alwaysRun": ["tests/smoke/**/*.test.ts"]
+}

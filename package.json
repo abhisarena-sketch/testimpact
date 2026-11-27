@@ -1,0 +1,45 @@
+{
+  "name": "testimpact-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TestImpact by Workfonic Labs. Change code. Know what to test.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/framework-adapters",
+    "packages/dependency-analyzer",
+    "packages/test-discovery",
+    "packages/core",
+    "packages/cli",
+    "apps/playground"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "build:playground": "npm run build --workspace @testimpact/playground",
+    "typecheck": "tsc -b tsconfig.build.json && tsc -p tsconfig.test.json && npm run typecheck --workspace @testimpact/playground",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "playground": "npm run build && npm run dev --workspace @testimpact/playground",
+    "bench": "npm run build && node scripts/bench.mjs",
+    "schema": "npm run build && node scripts/generate-schema.mjs",
+    "pack:check": "npm run build && npm pack --dry-run --workspace @testimpact/framework-adapters --workspace @testimpact/dependency-analyzer --workspace @testimpact/test-discovery --workspace @testimpact/core --workspace testimpact",
+    "clean": "rm -rf packages/*/dist apps/playground/.next .testimpact"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.43",
+    "@types/picomatch": "^4.0.3",
+    "eslint": "^10.15.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^4.1.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisarena-sketch/testimpact.git"
+  }
+}

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Workfonic Labs palette: white surfaces, charcoal text, grey secondary, cobalt accents. */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #1f2329;
+  --color-muted: #f5f6f8;
+  --color-muted-foreground: #5f6b7a;
+  --color-border: #e3e6ea;
+  --color-cobalt: #0047ab;
+  --color-cobalt-soft: #e8eefa;
+  --color-cobalt-strong: #003585;
+  --color-warn: #9a5b00;
+  --color-warn-soft: #fff6e5;
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html, body { background: var(--color-background); color: var(--color-foreground); }

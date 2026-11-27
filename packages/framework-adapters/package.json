@@ -1,0 +1,51 @@
+{
+  "name": "@testimpact/framework-adapters",
+  "version": "0.1.0",
+  "description": "Framework adapters (Vitest, Jest, Node.js test runner) for TestImpact.",
+  "license": "MIT",
+  "author": "Workfonic Labs",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisarena-sketch/testimpact.git",
+    "directory": "packages/framework-adapters"
+  },
+  "keywords": [
+    "testing",
+    "test-impact",
+    "test-selection",
+    "static-analysis",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "picomatch": "^4.0.3",
+    "typescript": "~5.9.3"
+  },
+  "homepage": "https://github.com/abhisarena-sketch/testimpact#readme",
+  "bugs": {
+    "url": "https://github.com/abhisarena-sketch/testimpact/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

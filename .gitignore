@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.testimpact/
+.next/
+out/
+coverage/
+bench-results/
+.bench/
+*.log
+.DS_Store
+next-env.d.ts

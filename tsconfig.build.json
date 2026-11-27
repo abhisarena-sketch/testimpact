@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/framework-adapters" },
+    { "path": "packages/dependency-analyzer" },
+    { "path": "packages/test-discovery" },
+    { "path": "packages/core" },
+    { "path": "packages/cli" }
+  ]
+}
