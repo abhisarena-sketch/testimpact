@@ -36,6 +36,8 @@ export interface ModuleImport {
   names: string[];
   /** Local identifiers bound by this import. */
   locals: string[];
+  /** Local bindings with the export they refer to (`*` for namespace bindings, `default` for default imports). */
+  bindings?: { imported: string; local: string }[];
   reexports?: ReexportBinding[];
 }
 
@@ -77,6 +79,11 @@ export interface UnresolvedDynamicImport {
   /** Source text of the non-literal specifier expression (truncated). */
   expression: string;
   kind: 'dynamic' | 'require';
+  /**
+   * Static leading part of a template-literal specifier (for example `../locales/` for
+   * `import(\`../locales/${lang}.json\`)`), used to flag possible matches. Undefined otherwise.
+   */
+  prefix?: string;
 }
 
 export interface ModuleInfo {

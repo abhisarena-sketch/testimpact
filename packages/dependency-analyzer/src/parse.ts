@@ -117,6 +117,16 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
   const namespaceUsage = new Map<string, Set<string> | '*'>();
   const localExports: { name: string; local: string; line: number }[] = [];
 
+  const unresolvedDynamic = (arg: ts.Expression, line: number, kind: 'dynamic' | 'require'): UnresolvedDynamicImport => {
+    const entry: UnresolvedDynamicImport = { line, expression: arg.getText(sf).slice(0, 80), kind };
+    if (ts.isTemplateExpression(arg) && arg.head.text.length > 0) entry.prefix = arg.head.text;
+    else if (ts.isBinaryExpression(arg) && arg.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const left = stringLiteralValue(arg.left);
+      if (left) entry.prefix = left;
+    }
+    return entry;
+  };
+
   const declare = (name: string, kind: DeclarationKind, node: ts.Node) => {
     const decl: Declaration = { name, kind, start: lineOf(node.getStart(sf)), end: lineOf(node.getEnd()), references: [] };
     declarations.push(decl);
@@ -143,16 +153,19 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
       const locals: string[] = [];
       let allType = clause.isTypeOnly;
       let anyValue = false;
-      const record: ModuleImport = { specifier, kind: 'static', line, names, locals };
+      const bindingsList: { imported: string; local: string }[] = [];
+      const record: ModuleImport = { specifier, kind: 'static', line, names, locals, bindings: bindingsList };
       if (clause.name) {
         names.push('default');
         locals.push(clause.name.text);
+        bindingsList.push({ imported: 'default', local: clause.name.text });
         importLocals.set(clause.name.text, record);
         anyValue = !clause.isTypeOnly;
       }
       const bindings = clause.namedBindings;
       if (bindings && ts.isNamespaceImport(bindings)) {
         locals.push(bindings.name.text);
+        bindingsList.push({ imported: '*', local: bindings.name.text });
         namespaceLocals.set(bindings.name.text, record);
         importLocals.set(bindings.name.text, record);
         anyValue = !clause.isTypeOnly;
@@ -160,6 +173,7 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
         for (const element of bindings.elements) {
           names.push((element.propertyName ?? element.name).text);
           locals.push(element.name.text);
+          bindingsList.push({ imported: (element.propertyName ?? element.name).text, local: element.name.text });
           importLocals.set(element.name.text, record);
           if (!element.isTypeOnly && !clause.isTypeOnly) anyValue = true;
         }
@@ -182,6 +196,7 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
             line,
             names: ['*'],
             locals: [statement.name.text],
+            bindings: [{ imported: '*', local: statement.name.text }],
           };
           importLocals.set(statement.name.text, record);
           imports.push(record);
@@ -300,7 +315,7 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
         if (opts.dynamicImports) {
           const spec = stringLiteralValue(firstArg);
           if (spec) imports.push({ specifier: spec, kind: 'dynamic', line: callLine, names: ['*'], locals: [] });
-          else if (firstArg) dynamicUnresolved.push({ line: callLine, expression: firstArg.getText(sf).slice(0, 80), kind: 'dynamic' });
+          else if (firstArg) dynamicUnresolved.push(unresolvedDynamic(firstArg, callLine, 'dynamic'));
         }
       } else if (ts.isIdentifier(callee) && callee.text === 'require' && node.arguments.length === 1) {
         if (opts.dynamicImports) {
@@ -320,9 +335,10 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
             } else if (parent && ts.isPropertyAccessExpression(parent) && parent.expression === node) {
               names = [parent.name.text];
             }
-            imports.push({ specifier: spec, kind: 'require', line: callLine, names: names.includes('*') ? ['*'] : names, locals });
+            const requireBindings = !names.includes('*') && names.length === locals.length ? names.map((n, i) => ({ imported: n, local: locals[i] as string })) : locals.map((l) => ({ imported: '*', local: l }));
+            imports.push({ specifier: spec, kind: 'require', line: callLine, names: names.includes('*') ? ['*'] : names, locals, bindings: requireBindings });
           } else if (firstArg) {
-            dynamicUnresolved.push({ line: callLine, expression: firstArg.getText(sf).slice(0, 80), kind: 'require' });
+            dynamicUnresolved.push(unresolvedDynamic(firstArg, callLine, 'require'));
           }
         }
       } else if (
@@ -359,7 +375,7 @@ export function parseModule(fileName: string, sourceText: string, options: Parse
     const imp = importLocals.get(local);
     if (imp) {
       const isNamespace = namespaceLocals.get(local) === imp;
-      const importedName = isNamespace ? '*' : (imp.names[imp.locals.indexOf(local)] ?? '*');
+      const importedName = isNamespace ? '*' : (imp.bindings?.find((b) => b.local === local)?.imported ?? '*');
       (imp.reexports ??= []).push({ exported: name, imported: importedName });
       exportsList.push({ name, local, kind: 'reexport', line });
     } else {

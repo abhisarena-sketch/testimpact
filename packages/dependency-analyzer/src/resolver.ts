@@ -78,6 +78,11 @@ export interface ResolverOptions {
   aliases?: AliasMap;
   /** Whether tsconfig `paths` and aliases are honoured. Default true. */
   pathAliases?: boolean;
+  /**
+   * Files (POSIX, relative to root) that no longer exist but should resolve as if they did,
+   * so that importers of deleted or renamed files can be found.
+   */
+  virtualFiles?: ReadonlySet<string>;
 }
 
 interface ProjectConfig {
@@ -117,11 +122,12 @@ export class ModuleResolver {
     this.knownFiles = options.knownFiles;
     this.pathAliases = options.pathAliases !== false;
     this.aliasRules = this.pathAliases ? compileAliases(options.aliases ?? {}, this.root) : [];
+    const virtualAbs = new Set([...(options.virtualFiles ?? [])].map((f) => path.join(this.root, f)));
     this.host = {
-      fileExists: ts.sys.fileExists,
+      fileExists: virtualAbs.size > 0 ? (p: string) => virtualAbs.has(path.resolve(p)) || ts.sys.fileExists(p) : ts.sys.fileExists,
       readFile: ts.sys.readFile,
       directoryExists: ts.sys.directoryExists,
-      realpath: ts.sys.realpath,
+      realpath: (p: string) => (virtualAbs.has(path.resolve(p)) ? p : (ts.sys.realpath?.(p) ?? p)),
       getCurrentDirectory: () => this.root,
     };
     if (options.tsconfig) {
@@ -201,6 +207,7 @@ export class ModuleResolver {
 
   private classify(absResolved: string, via: Extract<Resolution, { kind: 'internal' }>['via']): Resolution {
     const real = (() => {
+      if (this.knownFiles.has(this.toRel(absResolved) ?? '')) return absResolved;
       try {
         return fs.realpathSync(absResolved);
       } catch {

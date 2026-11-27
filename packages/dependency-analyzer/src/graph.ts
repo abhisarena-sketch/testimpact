@@ -29,12 +29,14 @@ export interface UnresolvedImport {
 
 export interface GraphNode {
   path: string;
+  /** True for files that were deleted (or renamed away) and only exist to connect their former importers. */
+  deleted?: boolean;
   /** Parsed module information; undefined for non-code files (JSON, CSS, assets). */
   info?: ModuleInfo;
 }
 
 export interface SerializedGraph {
-  nodes: { path: string; parsed: boolean }[];
+  nodes: { path: string; parsed: boolean; deleted?: boolean }[];
   edges: GraphEdge[];
   unresolved: UnresolvedImport[];
 }
@@ -163,7 +165,7 @@ export class DependencyGraph {
 
   toJSON(): SerializedGraph {
     return {
-      nodes: [...this.nodes.values()].map((n) => ({ path: n.path, parsed: n.info !== undefined })),
+      nodes: [...this.nodes.values()].map((n) => ({ path: n.path, parsed: n.info !== undefined, ...(n.deleted ? { deleted: true } : {}) })),
       edges: this.allEdges(),
       unresolved: this.unresolved,
     };
@@ -189,6 +191,8 @@ export interface BuildGraphOptions extends ParseOptions {
   readFile?: (absPath: string) => Promise<string>;
   /** Files larger than this are not parsed (default 2 MiB) and are reported as warnings. */
   maxFileSize?: number;
+  /** Deleted or renamed-away files that should still receive edges from their former importers. */
+  deletedFiles?: readonly string[];
 }
 
 export interface BuildGraphStats {
@@ -237,7 +241,8 @@ const now = () => performance.now();
 export async function buildDependencyGraph(options: BuildGraphOptions): Promise<BuildGraphResult> {
   const t0 = now();
   const root = path.resolve(options.root);
-  const known = new Set(options.files);
+  const deleted = new Set((options.deletedFiles ?? []).filter((f) => !options.files.includes(f)));
+  const known = new Set([...options.files, ...deleted]);
   const graph = new DependencyGraph();
   const warnings: string[] = [];
   const maxSize = options.maxFileSize ?? 2 * 1024 * 1024;
@@ -257,6 +262,7 @@ export async function buildDependencyGraph(options: BuildGraphOptions): Promise<
 
   const parseable = options.files.filter(isParseable);
   for (const file of options.files) graph.addNode({ path: file });
+  for (const file of deleted) graph.addNode({ path: file, deleted: true });
 
   await mapLimit(parseable, options.concurrency ?? 32, async (file) => {
     const abs = path.join(root, file);
@@ -309,6 +315,7 @@ export async function buildDependencyGraph(options: BuildGraphOptions): Promise<
     tsconfig: options.tsconfig,
     aliases: options.aliases,
     pathAliases: options.pathAliases,
+    virtualFiles: deleted,
   });
   for (const node of [...graph.nodes.values()].sort((a, b) => a.path.localeCompare(b.path))) {
     if (!node.info) continue;

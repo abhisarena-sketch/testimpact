@@ -1,4 +1,4 @@
-import type { LineRange, ModuleInfo } from './types.js';
+import type { LineRange, ModuleImport, ModuleInfo } from './types.js';
 
 export type ChangedSymbols =
   | { kind: 'all'; reason: string }
@@ -58,11 +58,22 @@ export function computeChangedSymbols(info: ModuleInfo | undefined, changedLines
     }
   }
 
-  // Propagate within the file until a fixed point is reached.
+  return propagate(info, changed);
+}
+
+/**
+ * Propagate a set of changed local names (declarations, import bindings, or `export:<name>` markers)
+ * through intra-file references and return the affected exports.
+ */
+function propagate(info: ModuleInfo, changed: Set<string>): ChangedSymbols {
   let grew = true;
   while (grew) {
     grew = false;
     for (const decl of info.declarations) {
+      if (decl.kind === 'statement') {
+        if (decl.references.some((r) => changed.has(r))) return { kind: 'all', reason: `top-level statement (line ${decl.start}) uses a changed binding` };
+        continue;
+      }
       if (decl.name.startsWith('<') || changed.has(decl.name)) continue;
       if (decl.references.some((r) => changed.has(r))) {
         changed.add(decl.name);
@@ -74,14 +85,60 @@ export function computeChangedSymbols(info: ModuleInfo | undefined, changedLines
   const exports = new Set<string>();
   for (const exp of info.exports) {
     if (changed.has(`export:${exp.name}`) || changed.has(exp.local)) exports.add(exp.name);
-    if (exp.name === 'default' && exp.local === 'default' && changed.has('default')) exports.add('default');
   }
-  // Star re-exports cannot be narrowed further here.
-  if ([...exports].includes('*')) return { kind: 'all', reason: 'star re-export changed' };
-
+  for (const c of changed) if (c.startsWith('export:')) exports.add(c.slice('export:'.length));
+  if (exports.has('*')) return { kind: 'all', reason: 'star re-export affected' };
   return {
     kind: 'some',
     exports: [...exports].sort(),
     declarations: [...changed].filter((n) => !n.startsWith('export:')).sort(),
   };
+}
+
+/**
+ * Given that `affected` exports of a dependency changed, determine which exports of the importing
+ * module are affected through the import records `imports` (the imports that resolve to that dependency).
+ * Returns `{ kind: 'some', exports: [] }` when the importer only uses unaffected exports.
+ */
+export function propagateFromDependency(
+  info: ModuleInfo | undefined,
+  imports: readonly ModuleImport[],
+  affected: ReadonlySet<string> | 'all',
+): ChangedSymbols & { usesAffected: boolean } {
+  if (!info) return { kind: 'all', reason: 'module could not be analysed', usesAffected: true };
+  const isAffected = (name: string) => affected === 'all' || name === '*' || affected.has(name) || (affected.has('*'));
+  const changed = new Set<string>();
+  let usesAffected = false;
+  for (const imp of imports) {
+    // Re-export bindings: `export { a as b } from './x'`, `export * from './x'`.
+    for (const r of imp.reexports ?? []) {
+      if (r.imported === '*' && r.exported === '*') {
+        if (affected === 'all') return { kind: 'all', reason: 'star re-export of a changed module', usesAffected: true };
+        for (const n of affected) changed.add(`export:${n}`);
+        if (affected.size > 0) usesAffected = true;
+      } else if (r.imported === '*' ? (affected === 'all' || affected.size > 0) : isAffected(r.imported)) {
+        changed.add(`export:${r.exported}`);
+        usesAffected = true;
+      }
+    }
+    if (imp.kind === 'reexport' || imp.kind === 'reexport-type') continue;
+    const bindings = imp.bindings ?? [];
+    if (bindings.length === 0) {
+      // Side-effect import, dynamic import, mock or bare require: the whole importer may be affected.
+      if (imp.names.some(isAffected) || imp.kind === 'side-effect') {
+        return { kind: 'all', reason: `${imp.kind} import of a changed module`, usesAffected: true };
+      }
+      continue;
+    }
+    for (const b of bindings) {
+      const hit = b.imported === '*' ? imp.names.some(isAffected) : isAffected(b.imported);
+      if (hit) {
+        changed.add(b.local);
+        usesAffected = true;
+      }
+    }
+  }
+  if (!usesAffected) return { kind: 'some', exports: [], declarations: [], usesAffected: false };
+  if (info.commonJsExports) return { kind: 'all', reason: 'CommonJS exports are not analysed per symbol', usesAffected: true };
+  return { ...propagate(info, changed), usesAffected: true };
 }
