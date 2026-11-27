@@ -1,0 +1,12 @@
+{
+  "name": "fixture-jest-app",
+  "private": true,
+  "devDependencies": { "jest": "^30.0.0" },
+  "jest": {
+    "testMatch": ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
+    "moduleNameMapper": {
+      "^@app/(.*)$": "<rootDir>/lib/$1",
+      "\\.(css|less)$": "<rootDir>/test/styleMock.js"
+    }
+  }
+}

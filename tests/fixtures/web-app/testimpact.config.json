@@ -1,0 +1,6 @@
+{
+  "testFramework": "vitest",
+  "mappings": [
+    { "source": "src/legacy/**", "tests": "tests/legacy-report-suite.test.ts", "reason": "Legacy report suite covers the report generator end to end" }
+  ]
+}
