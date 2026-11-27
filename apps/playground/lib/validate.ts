@@ -1,4 +1,4 @@
-import type { ImpactReport } from './types';
+import type { ImpactReport } from '@testimpact/core';
 
 /** Minimal client-side validation of a report loaded from a file. */
 export function asReport(value: unknown): ImpactReport {
